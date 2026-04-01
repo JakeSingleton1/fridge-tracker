@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Global resets for iOS PWA feel ─────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent; /* remove tap flash on iOS */
+}
+
+html, body, #root {
+  height: 100%;
+  /* Prevent iOS rubber-band scroll on the root */
+  overscroll-behavior: none;
+}
+
+body {
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── html5-qrcode override ───────────────────────────────────────────────── */
+/* The library injects its own styled elements; reset them to transparent so
+   our custom Viewfinder overlay is the only thing the user sees. */
+#camera-feed video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover;
+}
+
+#camera-feed img[alt="Info icon"],
+#camera-feed #qr-shaded-region,
+#camera-feed button {
+  display: none !important;
+}

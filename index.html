@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+
+    <!-- ── Viewport: viewport-fit=cover lets us paint behind the notch/home bar -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
+    <!-- ── PWA / iOS Safari ──────────────────────────────────────────────── -->
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- Makes the web app launch in standalone (no browser chrome) mode -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <!-- black-translucent: status bar overlaps the app; we use env(safe-area-inset-top) to compensate -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="FridgeTrack" />
+
+    <!-- Home screen icons — create these PNGs in public/icons/ -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152.png" />
+    <link rel="apple-touch-icon" sizes="120x120" href="/icons/icon-120.png" />
+
+    <!-- Launch screen images (optional but recommended for smooth launch on iOS) -->
+    <!-- Generate splash screens with: https://progressier.com/pwa-splash-screen-generator -->
+
+    <!-- ── Theme colour (Android / Chrome) ──────────────────────────────── -->
+    <meta name="theme-color" content="#007AFF" />
+    <meta name="msapplication-TileColor" content="#007AFF" />
+
+    <title>FridgeTrack</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
