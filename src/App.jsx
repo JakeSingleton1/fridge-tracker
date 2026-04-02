@@ -191,45 +191,62 @@ function CategoryHeader({ title }) {
   );
 }
 
-// ── ItemCard with swipe-to-delete ─────────────────────────────────────────────
+// ── ItemCard with swipe-to-delete and swipe-to-edit ──────────────────────────
 const DELETE_WIDTH = 80;
+const EDIT_WIDTH   = 80;
 
-function ItemCard({ item, onDelete }) {
+function ItemCard({ item, onDelete, onEdit }) {
   const days     = daysUntil(item.expiryDate);
   const badge    = expiryBadge(days);
   const emoji    = getItemEmoji(item.name, item.category);
   const [imgError, setImgError] = useState(false);
   const showImage = item.imageUrl && !imgError;
 
-  // Swipe-to-delete
-  const [swipeX, setSwipeX]   = useState(0);
-  const [snapped, setSnapped] = useState(false); // true = fully open
+  // cardX > 0 = swiped right (edit), cardX < 0 = swiped left (delete)
+  const [cardX,   setCardX]   = useState(0);
+  const [snapped, setSnapped] = useState(null); // null | 'edit' | 'delete'
   const touchStartX = useRef(null);
-  const cardRef     = useRef(null);
 
   const onTouchStart = (e) => {
     touchStartX.current = e.touches[0].clientX;
   };
   const onTouchMove = (e) => {
     if (touchStartX.current === null) return;
-    const dx = touchStartX.current - e.touches[0].clientX;
-    setSwipeX(Math.max(0, Math.min(dx, DELETE_WIDTH)));
+    const dx = e.touches[0].clientX - touchStartX.current;
+    setCardX(Math.max(-DELETE_WIDTH, Math.min(EDIT_WIDTH, dx)));
   };
   const onTouchEnd = () => {
-    const threshold = DELETE_WIDTH * 0.55;
-    if (swipeX >= threshold) { setSwipeX(DELETE_WIDTH); setSnapped(true); }
-    else                     { setSwipeX(0); setSnapped(false); }
+    if (cardX >= EDIT_WIDTH * 0.55)      { setCardX(EDIT_WIDTH);   setSnapped('edit'); }
+    else if (cardX <= -DELETE_WIDTH * 0.55) { setCardX(-DELETE_WIDTH); setSnapped('delete'); }
+    else                                 { setCardX(0);            setSnapped(null); }
     touchStartX.current = null;
   };
-  const closeSwipe = () => { setSwipeX(0); setSnapped(false); };
+  const closeSwipe = () => { setCardX(0); setSnapped(null); };
 
   return (
     <div
-      ref={cardRef}
       className="relative rounded-2xl overflow-hidden"
       style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}
     >
-      {/* Red delete panel behind the card */}
+      {/* Green edit panel — revealed on right swipe */}
+      <div
+        className="absolute left-0 inset-y-0 flex items-center justify-center rounded-l-2xl"
+        style={{ width: EDIT_WIDTH, backgroundColor: '#34C759' }}
+      >
+        <button
+          onClick={() => { closeSwipe(); onEdit(item); }}
+          className="w-full h-full flex flex-col items-center justify-center gap-1 active:opacity-70"
+          aria-label={`Edit ${item.name}`}
+        >
+          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round"
+              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+          </svg>
+          <span className="text-white text-xs font-bold">Edit</span>
+        </button>
+      </div>
+
+      {/* Red delete panel — revealed on left swipe */}
       <div
         className="absolute right-0 inset-y-0 flex items-center justify-center rounded-r-2xl"
         style={{ width: DELETE_WIDTH, backgroundColor: '#FF3B30' }}
@@ -251,8 +268,8 @@ function ItemCard({ item, onDelete }) {
       <div
         className="bg-white px-4 py-3.5 flex items-center gap-3.5 relative"
         style={{
-          transform:  `translateX(-${swipeX}px)`,
-          transition: (swipeX === 0 || snapped) ? 'transform 0.22s ease' : 'none',
+          transform:  `translateX(${cardX}px)`,
+          transition: (cardX === 0 || snapped) ? 'transform 0.22s ease' : 'none',
         }}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
@@ -560,6 +577,189 @@ function ManualEntryDrawer({ isOpen, onClose, onAdd, prefillName, prefillImageUr
   );
 }
 
+// ── EditDrawer ────────────────────────────────────────────────────────────────
+function EditDrawer({ isOpen, onClose, onSave, item }) {
+  const [name,     setName]     = useState('');
+  const [expiry,   setExpiry]   = useState('');
+  const [qty,      setQty]      = useState('1');
+  const [location, setLocation] = useState('Fridge');
+  const [category, setCategory] = useState('');
+
+  useEffect(() => {
+    if (isOpen && item) {
+      setName(item.name ?? '');
+      setExpiry(item.expiryDate ?? '');
+      setQty(String(item.quantity ?? 1));
+      setLocation(item.location ?? 'Fridge');
+      setCategory(item.category ?? '');
+    }
+  }, [isOpen, item]);
+
+  // Auto-detect category as user changes name
+  useEffect(() => {
+    if (name.trim().length > 2) {
+      const cat = getItemCategory(name);
+      if (cat) setCategory(cat);
+    }
+  }, [name]);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!name.trim() || !item) return;
+    onSave({
+      ...item,
+      name:       name.trim(),
+      expiryDate: expiry || null,
+      quantity:   Math.max(1, parseInt(qty, 10) || 1),
+      location,
+      category:   category || getItemCategory(name) || 'Other',
+    });
+    onClose();
+  };
+
+  const inputClass =
+    'w-full px-4 py-3 bg-[#F2F2F7] rounded-xl text-base text-gray-900 ' +
+    'placeholder-gray-400 outline-none focus:ring-2 focus:ring-[#34C759] transition';
+
+  const locMeta = LOCATION_META[location] ?? LOCATION_META.Fridge;
+
+  return (
+    <>
+      <div
+        role="presentation"
+        className="fixed inset-0 bg-black transition-opacity duration-300 z-40"
+        style={{ opacity: isOpen ? 0.4 : 0, pointerEvents: isOpen ? 'auto' : 'none' }}
+        onClick={onClose}
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Edit item"
+        className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-[2rem] shadow-2xl
+                   transition-transform duration-300 ease-out"
+        style={{
+          transform:     isOpen ? 'translateY(0)' : 'translateY(100%)',
+          paddingBottom: 'env(safe-area-inset-bottom)',
+          fontFamily:    IOS_FONT,
+        }}
+      >
+        <div className="flex justify-center pt-3 pb-1">
+          <div className="w-10 h-[5px] rounded-full bg-gray-300" />
+        </div>
+
+        <div className="px-5 pb-6 pt-2">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold text-gray-900">Edit Item</h2>
+            <button onClick={onClose} className="text-gray-400 active:text-gray-600 p-1" aria-label="Close">
+              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M18.36 5.64a1 1 0 00-1.41 0L12 10.59 7.05 5.64a1 1 0 00-1.41 1.41L10.59 12l-4.95 4.95a1 1 0 001.41 1.41L12 13.41l4.95 4.95a1 1 0 001.41-1.41L13.41 12l4.95-4.95a1 1 0 000-1.41z"/>
+              </svg>
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-3">
+            {/* Location */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                Storage Location
+              </label>
+              <div className="flex gap-1 bg-[#F2F2F7] rounded-xl p-1">
+                {LOCATIONS.map(loc => {
+                  const m = LOCATION_META[loc];
+                  const active = location === loc;
+                  return (
+                    <button
+                      key={loc}
+                      type="button"
+                      onClick={() => setLocation(loc)}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-semibold transition-all"
+                      style={active
+                        ? { backgroundColor: '#fff', color: m.color, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }
+                        : { color: '#8E8E93' }}
+                    >
+                      <span className="text-base leading-none">{m.icon}</span>
+                      {loc}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Name */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                Item Name
+              </label>
+              <input
+                type="text"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                className={inputClass}
+                required
+                autoComplete="off"
+              />
+              {category && (
+                <p className="text-xs text-gray-400 mt-1 pl-1">
+                  Category: <span className="font-semibold text-gray-500">{category}</span>
+                </p>
+              )}
+            </div>
+
+            {/* Expiry */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                Expiry Date
+                <span className="font-normal normal-case text-gray-400 ml-1">(optional)</span>
+              </label>
+              <input
+                type="date"
+                value={expiry}
+                onChange={e => setExpiry(e.target.value)}
+                className={inputClass}
+              />
+            </div>
+
+            {/* Quantity */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                Quantity
+              </label>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setQty(q => String(Math.max(1, parseInt(q, 10) - 1)))}
+                  className="w-12 h-12 rounded-xl bg-[#F2F2F7] text-2xl font-bold text-gray-600 flex items-center justify-center active:opacity-60"
+                >−</button>
+                <input
+                  type="number"
+                  value={qty}
+                  onChange={e => setQty(e.target.value)}
+                  min="1"
+                  max="99"
+                  className="flex-1 px-4 py-3 bg-[#F2F2F7] rounded-xl text-base text-center text-gray-900 outline-none focus:ring-2 focus:ring-[#34C759]"
+                />
+                <button
+                  type="button"
+                  onClick={() => setQty(q => String(Math.min(99, parseInt(q, 10) + 1)))}
+                  className="w-12 h-12 rounded-xl bg-[#F2F2F7] text-2xl font-bold text-gray-600 flex items-center justify-center active:opacity-60"
+                >+</button>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              className="w-full py-4 rounded-2xl text-white text-base font-bold mt-1 active:opacity-80 transition-opacity"
+              style={{ backgroundColor: '#34C759' }}
+            >
+              Save Changes ✓
+            </button>
+          </form>
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ── App ───────────────────────────────────────────────────────────────────────
 export default function App() {
   const [items,           setItems]           = useState([]);
@@ -569,6 +769,7 @@ export default function App() {
   const [selectedLoc,     setSelectedLoc]     = useState('Fridge');
   const [drawerOpen,      setDrawerOpen]      = useState(false);
   const [aiDrawerOpen,    setAiDrawerOpen]    = useState(false);
+  const [editingItem,     setEditingItem]     = useState(null);
   const [prefillName,     setPrefillName]     = useState('');
   const [prefillImageUrl, setPrefillImageUrl] = useState(null);
   const [notifState,      setNotifState]      = useState(
@@ -645,6 +846,16 @@ export default function App() {
       console.error('Insert failed:', error.message);
       setItems(prev => prev.filter(i => i.id !== item.id)); // rollback
     }
+  }, []);
+
+  const handleEdit = useCallback(async (updatedItem) => {
+    setItems(prev => prev.map(i => i.id === updatedItem.id ? updatedItem : i)); // optimistic
+    const { error } = await supabase
+      .from('fridge_items')
+      .update(itemToRow(updatedItem))
+      .eq('id', updatedItem.id)
+      .eq('household_id', HOUSEHOLD_ID);
+    if (error) console.error('Update failed:', error.message);
   }, []);
 
   const handleScanSuccess = useCallback(({ name, imageUrl }) => {
@@ -784,7 +995,7 @@ export default function App() {
                   <CategoryHeader title={category} />
                   <div className="space-y-2">
                     {catItems.map(item => (
-                      <ItemCard key={item.id} item={item} onDelete={handleDelete} />
+                      <ItemCard key={item.id} item={item} onDelete={handleDelete} onEdit={setEditingItem} />
                     ))}
                   </div>
                 </div>
@@ -860,6 +1071,12 @@ export default function App() {
         isOpen={aiDrawerOpen}
         onClose={() => setAiDrawerOpen(false)}
         onAdd={handleAdd}
+      />
+      <EditDrawer
+        isOpen={!!editingItem}
+        onClose={() => setEditingItem(null)}
+        onSave={handleEdit}
+        item={editingItem}
       />
     </div>
   );
