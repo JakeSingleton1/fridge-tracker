@@ -2,6 +2,9 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import ScannerComponent from './ScannerComponent';
 import AIImportDrawer from './AIImportDrawer';
 import GroceryList from './GroceryList';
+import PlannedMeals from './PlannedMeals';
+import RecipesTab from './RecipesTab';
+import ChatbotTab from './ChatbotTab';
 import { getItemEmoji, getItemCategory, getDefaultLocation } from './itemIcon';
 import { supabase, HOUSEHOLD_ID, rowToItem, itemToRow } from './supabase';
 
@@ -321,7 +324,7 @@ function BottomTabBar({ active, onChange }) {
       id: 'inventory',
       label: 'Inventory',
       icon: (on) => (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={on ? 2.2 : 1.8} viewBox="0 0 24 24">
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={on ? 2.2 : 1.8} viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round"
             d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
         </svg>
@@ -331,9 +334,39 @@ function BottomTabBar({ active, onChange }) {
       id: 'shopping',
       label: 'Shopping',
       icon: (on) => (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={on ? 2.2 : 1.8} viewBox="0 0 24 24">
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={on ? 2.2 : 1.8} viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round"
             d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+        </svg>
+      ),
+    },
+    {
+      id: 'meals',
+      label: 'Meals',
+      icon: (on) => (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={on ? 2.2 : 1.8} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round"
+            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+      ),
+    },
+    {
+      id: 'recipes',
+      label: 'Recipes',
+      icon: (on) => (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={on ? 2.2 : 1.8} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round"
+            d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+        </svg>
+      ),
+    },
+    {
+      id: 'chat',
+      label: 'Chat',
+      icon: (on) => (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={on ? 2.2 : 1.8} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round"
+            d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
         </svg>
       ),
     },
@@ -355,7 +388,7 @@ function BottomTabBar({ active, onChange }) {
             aria-label={tab.label}
           >
             {tab.icon(on)}
-            <span className="text-[10px] font-semibold tracking-wide">{tab.label}</span>
+            <span className="text-[9px] font-semibold tracking-wide">{tab.label}</span>
           </button>
         );
       })}
@@ -775,6 +808,7 @@ export default function App() {
   const [notifState,      setNotifState]      = useState(
     'Notification' in window ? Notification.permission : 'unsupported'
   );
+  const [inventorySearch, setInventorySearch] = useState('');
 
   // ── Fetch items + subscribe to real-time changes ──────────────────────────
   useEffect(() => {
@@ -880,6 +914,7 @@ export default function App() {
   // Filter to selected location, sort soonest-expiry first (no-date at bottom)
   const locationItems = items
     .filter(i => (i.location ?? 'Fridge') === selectedLoc)
+    .filter(i => !inventorySearch.trim() || i.name.toLowerCase().includes(inventorySearch.trim().toLowerCase()))
     .sort((a, b) => {
       if (!a.expiryDate && !b.expiryDate) return 0;
       if (!a.expiryDate) return 1;
@@ -955,7 +990,30 @@ export default function App() {
           </header>
 
           {/* Location tabs */}
-          <LocationTabs selected={selectedLoc} onChange={setSelectedLoc} />
+          <LocationTabs selected={selectedLoc} onChange={loc => { setSelectedLoc(loc); setInventorySearch(''); }} />
+
+          {/* Search bar */}
+          <div className="px-4 pb-2 shrink-0">
+            <div className="flex items-center gap-2 bg-[#E5E5EA] rounded-xl px-3 py-2.5">
+              <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z" />
+              </svg>
+              <input
+                type="text"
+                value={inventorySearch}
+                onChange={e => setInventorySearch(e.target.value)}
+                placeholder={`Search ${selectedLoc}…`}
+                className="flex-1 bg-transparent text-sm text-gray-900 placeholder-gray-400 outline-none"
+              />
+              {inventorySearch && (
+                <button onClick={() => setInventorySearch('')} className="text-gray-400 active:text-gray-600">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M18.36 5.64a1 1 0 00-1.41 0L12 10.59 7.05 5.64a1 1 0 00-1.41 1.41L10.59 12l-4.95 4.95a1 1 0 001.41 1.41L12 13.41l4.95 4.95a1 1 0 001.41-1.41L13.41 12l4.95-4.95a1 1 0 000-1.41z"/>
+                  </svg>
+                </button>
+              )}
+            </div>
+          </div>
 
           {/* Expiry alert banner */}
           <AlertBanner items={items} />
@@ -1052,6 +1110,42 @@ export default function App() {
           style={{ paddingBottom: `calc(env(safe-area-inset-bottom) + ${TAB_BAR_H}px)` }}
         >
           <GroceryList />
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════════════════════════════
+          PLANNED MEALS TAB
+      ════════════════════════════════════════════════════════════════ */}
+      {activeTab === 'meals' && (
+        <div
+          className="flex flex-col flex-1"
+          style={{ backgroundColor: '#F2F2F7' }}
+        >
+          <PlannedMeals />
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════════════════════════════
+          RECIPES TAB
+      ════════════════════════════════════════════════════════════════ */}
+      {activeTab === 'recipes' && (
+        <div
+          className="flex flex-col flex-1"
+          style={{ backgroundColor: '#F2F2F7' }}
+        >
+          <RecipesTab />
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════════════════════════════
+          CHAT TAB
+      ════════════════════════════════════════════════════════════════ */}
+      {activeTab === 'chat' && (
+        <div
+          className="flex flex-col flex-1"
+          style={{ backgroundColor: '#F2F2F7' }}
+        >
+          <ChatbotTab inventoryItems={items} />
         </div>
       )}
 

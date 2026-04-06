@@ -67,12 +67,38 @@ function EmptyState({ store }) {
   );
 }
 
+// ── SearchBar ─────────────────────────────────────────────────────────────────
+function SearchBar({ value, onChange }) {
+  return (
+    <div className="flex items-center gap-2 bg-[#E5E5EA] rounded-xl px-3 py-2.5 mb-3 mx-4">
+      <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z" />
+      </svg>
+      <input
+        type="text"
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder="Search list…"
+        className="flex-1 bg-transparent text-sm text-gray-900 placeholder-gray-400 outline-none"
+      />
+      {value && (
+        <button onClick={() => onChange('')} className="text-gray-400 active:text-gray-600">
+          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M18.36 5.64a1 1 0 00-1.41 0L12 10.59 7.05 5.64a1 1 0 00-1.41 1.41L10.59 12l-4.95 4.95a1 1 0 001.41 1.41L12 13.41l4.95 4.95a1 1 0 001.41-1.41L13.41 12l4.95-4.95a1 1 0 000-1.41z"/>
+          </svg>
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 export default function GroceryList() {
   const [activeStore, setActiveStore] = useState('target');
   // All grocery items keyed by store id: { target: [...], heb: [...], costco: [...] }
   const [lists, setLists] = useState({ target: [], heb: [], costco: [] });
   const [input, setInput] = useState('');
+  const [search, setSearch] = useState('');
   const inputRef = useRef(null);
 
   const store = STORES.find(s => s.id === activeStore);
@@ -201,8 +227,11 @@ export default function GroceryList() {
     if (error) console.error('Clear failed:', error.message);
   };
 
-  const unchecked = items.filter(i => !i.checked);
-  const checked   = items.filter(i =>  i.checked);
+  const filtered  = search.trim()
+    ? items.filter(i => i.name.toLowerCase().includes(search.trim().toLowerCase()))
+    : items;
+  const unchecked = filtered.filter(i => !i.checked);
+  const checked   = filtered.filter(i =>  i.checked);
 
   const badgeCount = (storeId) => (lists[storeId] ?? []).filter(i => !i.checked).length;
 
@@ -219,14 +248,14 @@ export default function GroceryList() {
       </header>
 
       {/* Store tabs */}
-      <div className="flex gap-1 mx-4 mb-3 bg-[#E5E5EA] rounded-xl p-1 shrink-0">
+      <div className="flex gap-1 mx-4 mb-2 bg-[#E5E5EA] rounded-xl p-1 shrink-0">
         {STORES.map(s => {
           const active = activeStore === s.id;
           const count  = badgeCount(s.id);
           return (
             <button
               key={s.id}
-              onClick={() => setActiveStore(s.id)}
+              onClick={() => { setActiveStore(s.id); setSearch(''); }}
               className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-semibold transition-all active:opacity-80 relative"
               style={
                 active
@@ -249,6 +278,9 @@ export default function GroceryList() {
           );
         })}
       </div>
+
+      {/* Search */}
+      <SearchBar value={search} onChange={v => { setSearch(v); }} />
 
       {/* List */}
       <div className="flex-1 overflow-y-auto px-4">

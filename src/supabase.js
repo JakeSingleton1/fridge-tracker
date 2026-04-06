@@ -60,3 +60,51 @@ export function groceryToRow(item, storeId) {
     added_at:     new Date().toISOString(),
   };
 }
+
+export function rowToRecipe(row) {
+  return {
+    id:           row.id,
+    name:         row.name,
+    description:  row.description  ?? null,
+    servingsBase: row.servings_base ?? 4,
+    ingredients:  row.ingredients  ?? [],
+    instructions: row.instructions ?? [],
+    imageUrl:     row.image_url    ?? null,
+    addedAt:      row.added_at,
+  };
+}
+
+export function recipeToRow(recipe) {
+  return {
+    id:           recipe.id,
+    household_id: HOUSEHOLD_ID,
+    name:         recipe.name,
+    description:  recipe.description  ?? null,
+    servings_base: recipe.servingsBase ?? 4,
+    ingredients:  recipe.ingredients  ?? [],
+    instructions: recipe.instructions ?? [],
+    image_url:    recipe.imageUrl     ?? null,
+    added_at:     recipe.addedAt      ?? new Date().toISOString(),
+  };
+}
+
+export function rowToMeal(row) {
+  return {
+    id:      row.id,
+    name:    row.name,
+    date:    row.planned_date ?? null,
+    notes:   row.notes        ?? null,
+    addedAt: row.added_at,
+  };
+}
+
+export function mealToRow(meal) {
+  return {
+    id:           meal.id,
+    household_id: HOUSEHOLD_ID,
+    name:         meal.name,
+    planned_date: meal.date   ?? null,
+    notes:        meal.notes  ?? null,
+    added_at:     meal.addedAt ?? new Date().toISOString(),
+  };
+}
