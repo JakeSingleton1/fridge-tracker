@@ -5,6 +5,7 @@ import GroceryList from './GroceryList';
 import PlannedMeals from './PlannedMeals';
 import RecipesTab from './RecipesTab';
 import ChatbotTab from './ChatbotTab';
+import { ApiKeyProvider, useApiKey } from './ApiKeyContext';
 import { getItemEmoji, getItemCategory, getDefaultLocation } from './itemIcon';
 import { supabase, HOUSEHOLD_ID, rowToItem, itemToRow } from './supabase';
 
@@ -793,6 +794,137 @@ function EditDrawer({ isOpen, onClose, onSave, item }) {
   );
 }
 
+// ── SettingsSheet ────────────────────────────────────────────────────────────
+function SettingsSheet({ isOpen, onClose }) {
+  const { apiKey, saveApiKey, clearApiKey } = useApiKey();
+  const [draft,   setDraft]   = useState('');
+  const [saved,   setSaved]   = useState(false);
+  const [editing, setEditing] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) { setDraft(''); setSaved(false); setEditing(false); }
+  }, [isOpen]);
+
+  const handleSave = async () => {
+    if (!draft.trim()) return;
+    await saveApiKey(draft.trim());
+    setDraft('');
+    setSaved(true);
+    setEditing(false);
+    setTimeout(() => setSaved(false), 2500);
+  };
+
+  const handleClear = () => { clearApiKey(); setEditing(false); };
+
+  return (
+    <>
+      <div
+        className="fixed inset-0 bg-black transition-opacity duration-300 z-40"
+        style={{ opacity: isOpen ? 0.4 : 0, pointerEvents: isOpen ? 'auto' : 'none' }}
+        onClick={onClose}
+      />
+      <div
+        className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-[2rem] shadow-2xl
+                   transition-transform duration-300 ease-out"
+        style={{
+          transform:     isOpen ? 'translateY(0)' : 'translateY(100%)',
+          paddingBottom: 'env(safe-area-inset-bottom)',
+          fontFamily:    IOS_FONT,
+        }}
+      >
+        <div className="flex justify-center pt-3 pb-1">
+          <div className="w-10 h-[5px] rounded-full bg-gray-300" />
+        </div>
+        <div className="px-5 pb-6 pt-2">
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-xl font-bold text-gray-900">Settings</h2>
+            <button onClick={onClose} className="text-gray-400 active:text-gray-600 p-1" aria-label="Close">
+              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M18.36 5.64a1 1 0 00-1.41 0L12 10.59 7.05 5.64a1 1 0 00-1.41 1.41L10.59 12l-4.95 4.95a1 1 0 001.41 1.41L12 13.41l4.95 4.95a1 1 0 001.41-1.41L13.41 12l4.95-4.95a1 1 0 000-1.41z"/>
+              </svg>
+            </button>
+          </div>
+
+          {/* API Key section */}
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Claude API Key</p>
+          <div className="bg-[#F2F2F7] rounded-2xl p-4 mb-4">
+            {apiKey && !editing ? (
+              <>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-2 h-2 rounded-full bg-green-500 shrink-0" />
+                  <p className="text-sm font-semibold text-gray-700">Key saved</p>
+                  {saved && <span className="text-xs text-green-500 font-semibold ml-auto">Updated ✓</span>}
+                </div>
+                <p className="text-xs text-gray-400 font-mono mb-3">
+                  {apiKey.slice(0, 12)}{'•'.repeat(16)}
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setEditing(true)}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white active:opacity-80"
+                    style={{ backgroundColor: '#007AFF' }}
+                  >
+                    Update Key
+                  </button>
+                  <button
+                    onClick={handleClear}
+                    className="flex-1 py-2.5 rounded-xl bg-white text-sm font-semibold text-red-500 active:opacity-80"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-gray-500 mb-3 leading-relaxed">
+                  {apiKey ? 'Enter a new key to replace the current one.' : 'Required for AI Import, Recipe Import, and the Chat assistant.'}
+                </p>
+                <input
+                  type="password"
+                  value={draft}
+                  onChange={e => setDraft(e.target.value)}
+                  placeholder="sk-ant-api03-…"
+                  className="w-full px-4 py-3 bg-white rounded-xl text-sm text-gray-900
+                             placeholder-gray-400 outline-none focus:ring-2 focus:ring-[#007AFF] mb-3"
+                  autoComplete="off"
+                  autoCorrect="off"
+                />
+                <p className="text-xs text-gray-400 mb-3">
+                  Encrypted and synced between both household devices. Get a key at{' '}
+                  <span style={{ color: '#007AFF' }}>console.anthropic.com</span>
+                </p>
+                <div className="flex gap-2">
+                  {apiKey && (
+                    <button
+                      onClick={() => setEditing(false)}
+                      className="flex-1 py-2.5 rounded-xl bg-white text-sm font-semibold text-gray-600 active:opacity-70"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                  <button
+                    onClick={handleSave}
+                    disabled={!draft.trim()}
+                    className="flex-1 py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-40 active:opacity-80"
+                    style={{ backgroundColor: '#007AFF' }}
+                  >
+                    Save Key
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+
+          <p className="text-xs text-gray-400 text-center leading-relaxed">
+            Your key is AES-encrypted before leaving this device.
+            Only your household can decrypt it.
+          </p>
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ── App ───────────────────────────────────────────────────────────────────────
 export default function App() {
   const [items,           setItems]           = useState([]);
@@ -809,23 +941,37 @@ export default function App() {
     'Notification' in window ? Notification.permission : 'unsupported'
   );
   const [inventorySearch, setInventorySearch] = useState('');
+  const [settingsOpen,    setSettingsOpen]    = useState(false);
+  const [swUpdated,       setSwUpdated]       = useState(false);
 
-  // ── Fetch items + subscribe to real-time changes ──────────────────────────
-  useEffect(() => {
-    // Initial load
-    supabase
+  // Pull-to-refresh
+  const PULL_THRESHOLD  = 80;
+  const scrollRef       = useRef(null);
+  const pullStartY      = useRef(null);
+  const [pullY,         setPullY]         = useState(0);
+  const [isRefreshing,  setIsRefreshing]  = useState(false);
+
+  // Reconnection tracking
+  const lastFetchedAt   = useRef(Date.now());
+  const channelRef      = useRef(null);
+
+  // ── Fetch inventory ───────────────────────────────────────────────────────
+  const refreshInventory = useCallback(async () => {
+    const { data, error } = await supabase
       .from('fridge_items')
       .select('*')
       .eq('household_id', HOUSEHOLD_ID)
-      .order('added_at', { ascending: false })
-      .then(({ data, error }) => {
-        if (!error && data) setItems(data.map(rowToItem));
-        setLoading(false);
-      });
+      .order('added_at', { ascending: false });
+    if (!error && data) setItems(data.map(rowToItem));
+    lastFetchedAt.current = Date.now();
+    return !error;
+  }, []);
 
-    // Real-time: any INSERT/DELETE by either device updates both screens
-    const channel = supabase
-      .channel('items-sync')
+  // ── Subscribe (or re-subscribe) to real-time changes ─────────────────────
+  const subscribe = useCallback(() => {
+    if (channelRef.current) supabase.removeChannel(channelRef.current);
+    channelRef.current = supabase
+      .channel(`items-sync-${Date.now()}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'fridge_items',
@@ -842,22 +988,59 @@ export default function App() {
           }
         }
       )
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR') {
+          // Auto-retry after 3s
+          setTimeout(() => subscribe(), 3000);
+        }
+      });
   }, []);
 
-  // Send expiry notifications on load and when app comes back to foreground
+  // ── Initial load ──────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!loading) {
+    refreshInventory().then(() => setLoading(false));
+    subscribe();
+    return () => {
+      if (channelRef.current) supabase.removeChannel(channelRef.current);
+    };
+  }, [refreshInventory, subscribe]);
+
+  // ── SW update banner ──────────────────────────────────────────────────────
+  useEffect(() => {
+    const handler = () => setSwUpdated(true);
+    window.addEventListener('sw-updated', handler);
+    return () => window.removeEventListener('sw-updated', handler);
+  }, []);
+
+  // ── Reconnection + expiry notifications ──────────────────────────────────
+  useEffect(() => {
+    if (loading) return;
+
+    const STALE_MS = 5 * 60 * 1000; // re-fetch if stale for > 5 min
+
+    sendExpiryNotifications(items);
+
+    const onVisibilityChange = async () => {
+      if (document.visibilityState !== 'visible') return;
       sendExpiryNotifications(items);
-      const onVisible = () => {
-        if (document.visibilityState === 'visible') sendExpiryNotifications(items);
-      };
-      document.addEventListener('visibilitychange', onVisible);
-      return () => document.removeEventListener('visibilitychange', onVisible);
-    }
-  }, [items, loading]);
+      if (Date.now() - lastFetchedAt.current > STALE_MS) {
+        await refreshInventory();
+        subscribe(); // re-subscribe in case WebSocket dropped
+      }
+    };
+
+    const onOnline = async () => {
+      await refreshInventory();
+      subscribe();
+    };
+
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('online', onOnline);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('online', onOnline);
+    };
+  }, [items, loading, refreshInventory, subscribe]);
 
   // ── Optimistic handlers ───────────────────────────────────────────────────
   const handleDelete = useCallback(async (id) => {
@@ -903,6 +1086,35 @@ export default function App() {
     setPrefillName('');
     setPrefillImageUrl(null);
     setDrawerOpen(true);
+  };
+
+  // ── Pull-to-refresh handlers ──────────────────────────────────────────────
+  const handlePTRStart = (e) => {
+    if (scrollRef.current?.scrollTop > 0) return;
+    pullStartY.current = e.touches[0].clientY;
+  };
+  const handlePTRMove = (e) => {
+    if (pullStartY.current === null) return;
+    const dy = e.touches[0].clientY - pullStartY.current;
+    if (dy < 0) { pullStartY.current = null; return; }
+    setPullY(Math.min(dy, PULL_THRESHOLD * 1.6));
+  };
+  const handlePTREnd = async () => {
+    if (pullStartY.current === null) return;
+    pullStartY.current = null;
+    if (pullY >= PULL_THRESHOLD) {
+      setIsRefreshing(true);
+      await refreshInventory();
+      setIsRefreshing(false);
+    }
+    setPullY(0);
+  };
+
+  const handleManualRefresh = async () => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    await refreshInventory();
+    setIsRefreshing(false);
   };
 
   const handleEnableNotifications = async () => {
@@ -955,6 +1167,7 @@ export default function App() {
   const TAB_BAR_H = 56; // px, matches the tab bar button area
 
   return (
+    <ApiKeyProvider>
     <div
       className="min-h-screen flex flex-col"
       style={{
@@ -963,6 +1176,21 @@ export default function App() {
         paddingTop:       'env(safe-area-inset-top)',
       }}
     >
+      {/* SW update banner */}
+      {swUpdated && (
+        <div
+          className="fixed top-0 left-0 right-0 z-[100] flex items-center justify-between px-4 py-3 text-white text-sm font-semibold"
+          style={{ backgroundColor: '#34C759', paddingTop: 'calc(env(safe-area-inset-top) + 12px)' }}
+        >
+          <span>App updated — tap to reload</span>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-3 py-1 bg-white/20 rounded-lg active:opacity-70 text-xs font-bold"
+          >
+            Reload
+          </button>
+        </div>
+      )}
       {/* ════════════════════════════════════════════════════════════════
           INVENTORY TAB
       ════════════════════════════════════════════════════════════════ */}
@@ -978,15 +1206,46 @@ export default function App() {
                 {items.length} item{items.length !== 1 ? 's' : ''} tracked
               </p>
             </div>
-            <button
-              onClick={() => setAiDrawerOpen(true)}
-              className="mt-1 flex items-center gap-1.5 px-3 py-2 rounded-xl active:opacity-70 transition-opacity"
-              style={{ backgroundColor: '#EEF4FF', color: '#007AFF' }}
-              aria-label="AI Import"
-            >
-              <span className="text-base leading-none">✨</span>
-              <span className="text-sm font-semibold">AI Import</span>
-            </button>
+            <div className="flex items-center gap-2 mt-1">
+              {/* Manual refresh */}
+              <button
+                onClick={handleManualRefresh}
+                disabled={isRefreshing}
+                className="w-9 h-9 rounded-xl flex items-center justify-center active:opacity-70 transition-opacity disabled:opacity-40"
+                style={{ backgroundColor: '#F2F2F7' }}
+                aria-label="Refresh inventory"
+              >
+                <svg
+                  className={`w-4 h-4 text-gray-500 ${isRefreshing ? 'animate-spin' : ''}`}
+                  fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round"
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+              {/* AI Import */}
+              <button
+                onClick={() => setAiDrawerOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl active:opacity-70 transition-opacity"
+                style={{ backgroundColor: '#EEF4FF', color: '#007AFF' }}
+                aria-label="AI Import"
+              >
+                <span className="text-base leading-none">✨</span>
+                <span className="text-sm font-semibold">AI Import</span>
+              </button>
+              {/* Settings */}
+              <button
+                onClick={() => setSettingsOpen(true)}
+                className="w-9 h-9 rounded-xl flex items-center justify-center active:opacity-70 transition-opacity"
+                style={{ backgroundColor: '#F2F2F7' }}
+                aria-label="Settings"
+              >
+                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </button>
+            </div>
           </header>
 
           {/* Location tabs */}
@@ -1040,10 +1299,31 @@ export default function App() {
             </button>
           )}
 
+          {/* Pull-to-refresh indicator */}
+          {(pullY > 0 || isRefreshing) && (
+            <div
+              className="flex items-center justify-center shrink-0 overflow-hidden transition-all"
+              style={{ height: isRefreshing ? 44 : Math.min(pullY * 0.55, 44) }}
+            >
+              <div
+                className={`w-6 h-6 rounded-full border-2 border-[#007AFF] border-t-transparent ${
+                  isRefreshing || pullY >= PULL_THRESHOLD ? 'animate-spin' : ''
+                }`}
+                style={{
+                  transform: `rotate(${isRefreshing ? 0 : (pullY / PULL_THRESHOLD) * 360}deg)`,
+                }}
+              />
+            </div>
+          )}
+
           {/* Grouped item list — pb clears action bar + tab bar */}
           <main
+            ref={scrollRef}
             className="flex-1 overflow-y-auto px-4"
             style={{ paddingBottom: `calc(env(safe-area-inset-bottom) + ${TAB_BAR_H}px + 88px)` }}
+            onTouchStart={handlePTRStart}
+            onTouchMove={handlePTRMove}
+            onTouchEnd={handlePTREnd}
           >
             {locationItems.length === 0 ? (
               <EmptyState location={selectedLoc} />
@@ -1138,16 +1418,17 @@ export default function App() {
       )}
 
       {/* ════════════════════════════════════════════════════════════════
-          CHAT TAB
+          CHAT TAB — always mounted to preserve conversation history
       ════════════════════════════════════════════════════════════════ */}
-      {activeTab === 'chat' && (
-        <div
-          className="flex flex-col flex-1"
-          style={{ backgroundColor: '#F2F2F7' }}
-        >
-          <ChatbotTab inventoryItems={items} />
-        </div>
-      )}
+      <div
+        className="flex flex-col flex-1"
+        style={{
+          backgroundColor: '#F2F2F7',
+          display: activeTab === 'chat' ? 'flex' : 'none',
+        }}
+      >
+        <ChatbotTab inventoryItems={items} />
+      </div>
 
       {/* ── Persistent bottom tab bar ─────────────────────────────────── */}
       <BottomTabBar active={activeTab} onChange={setActiveTab} />
@@ -1172,6 +1453,8 @@ export default function App() {
         onSave={handleEdit}
         item={editingItem}
       />
+      <SettingsSheet isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
+    </ApiKeyProvider>
   );
 }

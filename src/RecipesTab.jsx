@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase, HOUSEHOLD_ID, rowToRecipe, recipeToRow } from './supabase';
+import { useApiKey } from './ApiKeyContext';
 
 const IOS_FONT =
   '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif';
 
-const API_KEY_STORAGE = 'fridgetrack_claude_key';
 const MODEL = 'claude-sonnet-4-6';
 const TAB_BAR_H = 56;
 
@@ -536,8 +536,7 @@ function fileToBase64(file) {
 }
 
 function AIRecipeImport({ isOpen, onClose, onImport }) {
-  const [apiKey,  setApiKey]  = useState(() => localStorage.getItem(API_KEY_STORAGE) ?? '');
-  const [keyDraft,setKeyDraft]= useState('');
+  const { apiKey, saveApiKey } = useApiKey();
   const [mode,    setMode]    = useState('text'); // 'text' | 'image'
   const [text,    setText]    = useState('');
   const [imgFile, setImgFile] = useState(null);
@@ -547,13 +546,6 @@ function AIRecipeImport({ isOpen, onClose, onImport }) {
   const fileRef = useRef(null);
 
   const hasKey = !!apiKey;
-
-  const saveKey = () => {
-    if (!keyDraft.trim()) return;
-    localStorage.setItem(API_KEY_STORAGE, keyDraft.trim());
-    setApiKey(keyDraft.trim());
-    setKeyDraft('');
-  };
 
   const handleFile = e => {
     const f = e.target.files?.[0];
@@ -632,25 +624,15 @@ function AIRecipeImport({ isOpen, onClose, onImport }) {
         </div>
 
         <div className="overflow-y-auto flex-1 px-5 pb-4">
-          {/* API key setup */}
+          {/* API key missing */}
           {!hasKey && (
-            <div className="bg-[#EEF4FF] rounded-2xl p-4 mb-4">
-              <p className="text-sm font-semibold text-[#007AFF] mb-2">Claude API Key Required</p>
-              <input
-                type="password"
-                value={keyDraft}
-                onChange={e => setKeyDraft(e.target.value)}
-                placeholder="sk-ant-…"
-                className="w-full px-3 py-2.5 bg-white rounded-xl text-sm text-gray-900 outline-none border border-gray-200 mb-2"
-              />
-              <button
-                onClick={saveKey}
-                disabled={!keyDraft.trim()}
-                className="w-full py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-40 active:opacity-80"
-                style={{ backgroundColor: '#007AFF' }}
-              >
-                Save Key
-              </button>
+            <div className="bg-[#FFF3E5] rounded-2xl p-4 mb-4" style={{ border: '1px solid #FFCC80' }}>
+              <p className="text-sm font-semibold" style={{ color: '#FF9500' }}>
+                ⚙️ Claude API key required
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                Set your key in Settings (⚙️ icon on the Inventory tab) to use AI recipe import.
+              </p>
             </div>
           )}
 

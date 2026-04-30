@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { useApiKey } from './ApiKeyContext';
 
 // ── Constants ────────────────────────────────────────────────────────────────
-const API_KEY_STORAGE = 'fridgetrack_claude_key';
 const MODEL = 'claude-sonnet-4-6'; // vision + text, great quality/cost balance
 
 // ── System prompt sent to Claude ─────────────────────────────────────────────
@@ -266,7 +266,7 @@ function PreviewRow({ item, checked, onToggle }) {
 
 // ── Main drawer ───────────────────────────────────────────────────────────────
 export default function AIImportDrawer({ isOpen, onClose, onAdd }) {
-  const [apiKey, setApiKey] = useState(() => localStorage.getItem(API_KEY_STORAGE) ?? '');
+  const { apiKey, saveApiKey: persistApiKey } = useApiKey();
   const [showKeyPanel, setShowKeyPanel] = useState(false);
   const [tab, setTab] = useState('text'); // 'text' | 'list-image' | 'fridge-image'
   const [text, setText] = useState('');
@@ -300,8 +300,7 @@ export default function AIImportDrawer({ isOpen, onClose, onAdd }) {
   }, [reset, onClose]);
 
   const saveApiKey = (key) => {
-    setApiKey(key);
-    localStorage.setItem(API_KEY_STORAGE, key);
+    persistApiKey(key);
     setShowKeyPanel(false);
   };
 

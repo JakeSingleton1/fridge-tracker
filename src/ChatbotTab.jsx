@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { supabase, HOUSEHOLD_ID } from './supabase';
+import { useApiKey } from './ApiKeyContext';
 
 const IOS_FONT =
   '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif';
 
-const API_KEY_STORAGE = 'fridgetrack_claude_key';
 const MODEL = 'claude-sonnet-4-6';
 const TAB_BAR_H = 56;
 
@@ -259,9 +259,8 @@ function UserMessage({ text }) {
   );
 }
 
-// ── API key setup screen ──────────────────────────────────────────────────────
-function ApiKeySetup({ onSave }) {
-  const [draft, setDraft] = useState('');
+// ── No-key placeholder ────────────────────────────────────────────────────────
+function NoKeyPlaceholder() {
   return (
     <div className="flex flex-col items-center justify-center flex-1 px-8 text-center">
       <div className="text-6xl mb-5 select-none">✨</div>
@@ -269,23 +268,14 @@ function ApiKeySetup({ onSave }) {
       <p className="text-sm text-gray-400 mb-6 leading-relaxed">
         Get meal ideas based on what's in your fridge, add items to shopping lists, and plan meals — all through conversation.
       </p>
-      <div className="w-full space-y-3">
-        <input
-          type="password"
-          value={draft}
-          onChange={e => setDraft(e.target.value)}
-          placeholder="Paste your Claude API key (sk-ant-…)"
-          className="w-full px-4 py-3 bg-[#F2F2F7] rounded-xl text-base text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-[#007AFF]"
-          autoComplete="off"
-        />
-        <button
-          onClick={() => { if (draft.trim()) { localStorage.setItem(API_KEY_STORAGE, draft.trim()); onSave(draft.trim()); } }}
-          disabled={!draft.trim()}
-          className="w-full py-4 rounded-2xl text-white text-base font-bold disabled:opacity-40 active:opacity-80 transition-opacity"
-          style={{ backgroundColor: '#007AFF' }}
-        >
-          Get Started
-        </button>
+      <div
+        className="w-full px-4 py-4 rounded-2xl text-sm leading-relaxed"
+        style={{ backgroundColor: '#FFF3E5', color: '#FF9500' }}
+      >
+        <p className="font-semibold mb-1">Claude API key required</p>
+        <p className="text-xs" style={{ color: '#8E8E93' }}>
+          Set your key via the ⚙️ icon on the Inventory tab to start chatting.
+        </p>
       </div>
     </div>
   );
@@ -293,7 +283,7 @@ function ApiKeySetup({ onSave }) {
 
 // ── Main ChatbotTab ──────────────────────────────────────────────────────────
 export default function ChatbotTab({ inventoryItems }) {
-  const [apiKey,   setApiKey]   = useState(() => localStorage.getItem(API_KEY_STORAGE) ?? '');
+  const { apiKey, saveApiKey } = useApiKey();
   const [messages, setMessages] = useState([]); // { role: 'user'|'assistant', text?, message?, actions? }
   const [history,  setHistory]  = useState([]); // Claude API history format
   const [input,    setInput]    = useState('');
@@ -350,7 +340,7 @@ export default function ChatbotTab({ inventoryItems }) {
         <header className="px-5 pt-5 pb-3 shrink-0">
           <h1 className="text-[2rem] font-bold tracking-tight text-gray-900 leading-none">Chat</h1>
         </header>
-        <ApiKeySetup onSave={setApiKey} />
+        <NoKeyPlaceholder />
       </div>
     );
   }
